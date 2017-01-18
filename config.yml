@@ -1,0 +1,11 @@
+# Config file for all scripts
+
+# hardening_checks.py
+lynis:
+   repo:       https://github.com/CISOfy/lynis
+   lynis_file: lynis.sh
+john:
+   shadow: /etc/shadow
+   passwd: /etc/passwd
+containers:
+   container_list: container_list.txt
