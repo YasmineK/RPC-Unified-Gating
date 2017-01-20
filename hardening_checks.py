@@ -156,7 +156,7 @@ def main():
     load_config()
     get_container_list()
     run_lynis()
-    run_john()
+    # run_john()
 
 
 if __name__ == "__main__":
