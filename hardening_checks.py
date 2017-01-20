@@ -1,8 +1,11 @@
 import os
 import subprocess
-import yaml
 from subprocess import call
 from threading import Timer
+try:
+    import yaml
+except ImportError:
+    call(['pip', 'install', 'pyyaml'])
 
 
 counter = 0
