@@ -6,6 +6,7 @@ try:
     import yaml
 except ImportError:
     call(['pip', 'install', 'pyyaml'])
+    import yaml
 
 
 counter = 0
