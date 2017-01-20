@@ -78,8 +78,8 @@ def run_lynis_container():
         for line in cl:
             line = line.rstrip()
             # print line
-            call(['scp', '-r', 'lynis/', 'root@'+line+':'])
-            call(['scp', lynis_run_file, 'root@'+line+':'])
+            call(['scp', '-oStrictHostKeyChecking=no', '-r', 'lynis/', 'root@'+line])  # removed : at end of "line:
+            call(['scp', lynis_run_file, 'root@'+line])
             call(['lxc-attach', '-n', line, '--', './lynis.sh', 'audit',
                   'system', '-Q'])
             #break
@@ -124,7 +124,7 @@ def exec_call(container_name, passwd, shadow):
              'install', '-y', 'john'])
         call(['lxc-attach', '-n', container_name, '--', 'unshadow',
               passwd, shadow], stdout=out)
-        call(['scp', 'out_' + str(counter) + '.txt', 'root@'+container_name+':'])
+        call(['scp', 'out_' + str(counter) + '.txt', 'root@'+container_name])      # removed : here as well:
         process = subprocess.Popen(['lxc-attach', '-n', container_name, '--',
                                     'john', '--session=' + str(counter), 'out_' +
                                     str(counter) + '.txt'], stdout=result)
