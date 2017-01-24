@@ -18,7 +18,7 @@ shadow_file = None
 passwd_file = None
 container_list_file = None
 hostnames_dict = None
-hostnames_list = None
+hostnames_list = []
 
 
 
@@ -132,8 +132,7 @@ def get_hostnames_list():
     global hostnames_list
 
     for key in hostnames_dict:
-        print key
-        #hostnames_list.append(key)
+        hostnames_list.append(key)
 
 
 def run_john():
