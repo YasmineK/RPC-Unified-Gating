@@ -129,12 +129,10 @@ def run_lynis():
 
 
 def get_hostnames_list():
-    global counter, hostnames_list
-    counter = 0
+    hostnames_list
 
     for key in hostnames_dict:
-        hostnames_list[counter] = key
-        counter += 1
+        hostnames_list.append(key)
 
 
 def run_john():
