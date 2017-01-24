@@ -7,5 +7,5 @@ lynis:
 john:
    shadow: /etc/shadow
    passwd: /etc/passwd
-containers:
-   container_list: container_list.txt
+hostnames:
+   hostnames_path: /etc/openstack_deploy/openstack_hostnames_ips.yml
