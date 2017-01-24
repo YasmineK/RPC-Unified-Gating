@@ -133,7 +133,7 @@ def get_hostnames_list():
 
     for key in hostnames_dict:
         print key
-        hostnames_list.append(key)
+        #hostnames_list.append(key)
 
 
 def run_john():
