@@ -1,13 +1,15 @@
 import os
 import subprocess
 from subprocess import call
+from paramiko import SSHClient
 from threading import Timer
+
 try:
     import yaml
 except ImportError:
     call(['pip', 'install', 'pyyaml'])
     import yaml
-
+from scp import SCPClient
 
 counter = 0
 lynis_repo = ''
@@ -15,11 +17,14 @@ lynis_run_file = None
 shadow_file = None
 passwd_file = None
 container_list_file = None
+hostnames_dict = None
+hostnames_list = None
+
 
 
 def load_config():
     global lynis_repo, lynis_run_file, shadow_file, passwd_file, \
-        container_list_file
+        container_list_file, hostnames_dict
 
     with open('config.yml', 'r') as file_:
         cfg = yaml.safe_load(file_)
@@ -44,24 +49,33 @@ def load_config():
         exit()
 
     try:
-        containers_info = cfg.get('containers')
-        container_list_file = containers_info['container_list']
+        hostnames_path = cfg.get('hostnames')['hostnames_path']
+        with open(hostnames_path, 'r') as hn:
+            hostnames_dict = yaml.safe_load(hn)
+        hn.close()
     except yaml.YAMLError:
         print 'Could not load Containers config - check YAML file'
         exit()
 
+def get_ssh_client(remote_server):
+    client = SSHClient()
+    client.load_system_host_keys()
+    client.connect(remote_server)
 
-def run_lynis_host(repo):
+    return client
+
+
+def run_lynis_deployment_host(repo):
     call(['git', 'clone', repo])
     os.chdir('lynis')
     call(['./lynis', 'audit', 'system', '-V'])
     os.chdir('../')
 
 
-def run_lynis_container():
+def run_lynis_in_env():
+
     # implements "cd" as directory needs to be changed in the
     # containers for ./lynis to run
-
     lynis = open(lynis_run_file, 'w+')
     lynis.write('#!/bin/bash')
     lynis.write('\n\n')
@@ -72,32 +86,55 @@ def run_lynis_container():
 
     call(['chmod', '0700', lynis_run_file])
 
-    print 'NOW RUNNING LYNIS ON CONTAINERS'
+
+    print 'NOW RUNNING LYNIS IN WHOLE ENV'
+
+    for node in hostnames_list:
+        ssh = get_ssh_client(node)
+        scp = SCPClient(ssh.get_transport())
+        scp.put('lynis/', 'lynis/', recursive=True)
+        scp.put(lynis_run_file, lynis_run_file)
+        ssh.exec_command('./lynis.sh audit system -Q')
+
+        '''if node.contains('container'):
+            call(['lxc-attach', '-n', node, '--', './lynis.sh', 'audit', 'system', '-Q'])
+        else:
+            ssh.exec_command('./lynis.sh audit system -Q')
 
     with open(container_list_file) as cl:
-        for line in cl:
-            line = line.rstrip()
+        for hostname in cl:
+            hostname = hostname.rstrip()
+            ssh = get_ssh_client(hostname)
+            scp = SCPClient(ssh.get_transport())
             # print line
-            call(['scp', '-oStrictHostKeyChecking=no', '-r', 'lynis/', 'root@'+line])  # removed : at end of "line:
-            call(['scp', lynis_run_file, 'root@'+line])
-            call(['lxc-attach', '-n', line, '--', './lynis.sh', 'audit',
-                  'system', '-Q'])
-            #break
-        cl.close()
+            # call(['scp', '-oStrictHostKeyChecking=no', '-r', 'lynis/', 'root@'+hostname+":"])
+            # call(['scp', lynis_run_file, 'root@'+hostname+":"])
+            scp.put('lynis/', 'lynis/', recursive=True)
+            scp.put(lynis_run_file, lynis_run_file)
+
+            if hostname.contains('container'):  # this is a container
+                call(['lxc-attach', '-n', hostname, '--', './lynis.sh', 'audit', 'system', '-Q'])
+            else:       # this is not a container
+                ssh.exec_command('./lynis.sh audit system -Q')
+            ssh.close()
+        cl.close()'''
 
 
 def run_lynis():
     # this first part runs lynis on the main host ....
-    run_lynis_host(lynis_repo)
+    run_lynis_deployment_host(lynis_repo)
     # remember to remove lynis after use
 
-    run_lynis_container()
+    run_lynis_in_env()
 
 
-def get_container_list():
-    container_list = open(container_list_file, 'w+')
-    call(['lxc-ls'], stdout=container_list)
-    container_list.close()
+def get_hostnames_list():
+    global counter, hostnames_list
+    counter = 0
+
+    for key in hostnames_dict:
+        hostnames_list[counter] = key
+        counter += 1
 
 
 def run_john():
@@ -115,6 +152,7 @@ def run_john():
 
 def exec_call(container_name, passwd, shadow):
     global counter
+    counter = 0
     out = open('out_' + str(counter) + '.txt', 'w+')
     result = open('result_' + str(counter) + '.txt', 'w+')
 
@@ -154,7 +192,7 @@ def kill_john_process(process):
 
 def main():
     load_config()
-    get_container_list()
+    get_hostnames_list()
     run_lynis()
     # run_john()
 
