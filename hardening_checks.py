@@ -58,11 +58,10 @@ def load_config():
         print 'Could not load Containers config - check YAML file'
         exit()
 
-def get_ssh_client(remote_server):
+def get_ssh_client():
     client = SSHClient()
     client.load_system_host_keys()
     client.set_missing_host_key_policy(AutoAddPolicy())
-    client.connect(remote_server)
 
     return client
 
@@ -99,11 +98,13 @@ def run_lynis_in_env():
     print 'NOW RUNNING LYNIS IN WHOLE ENV'
 
     for node in hostnames_list:
-        ssh = get_ssh_client(node)
+        ssh = get_ssh_client()
+        ssh.connect(node, username='root')
         scp = SCPClient(ssh.get_transport())
         scp.put('lynis/', 'lynis/', recursive=True)
         scp.put(lynis_run_file, lynis_run_file)
         ssh.exec_command('./lynis.sh audit system -Q')
+        ssh.close()
 
         '''if node.contains('container'):
             call(['lxc-attach', '-n', node, '--', './lynis.sh', 'audit', 'system', '-Q'])
