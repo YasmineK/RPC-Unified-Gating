@@ -99,7 +99,7 @@ def run_lynis_in_env():
 
     for node in hostnames_list:
         ssh = get_ssh_client()
-        ssh.connect(node, username='root', key_filename='/root/.ssh/id_rsa.pub')
+        ssh.connect(node, username='root', key_filename='/root/.ssh/id_rsa')
         scp = SCPClient(ssh.get_transport())
         scp.put('lynis/', 'lynis/', recursive=True)
         scp.put(lynis_run_file, lynis_run_file)
