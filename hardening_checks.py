@@ -76,7 +76,7 @@ def get_hostnames_list():
 def run_lynis_deployment_host(repo):
     call(['git', 'clone', repo])
     os.chdir('lynis')
-    call(['./lynis', 'audit', 'system', '-V'])
+    call(['./lynis', 'audit', 'system', '-q'])  # logs in /var/log/lynis.log and lynis-report.dat
     os.chdir('../')
 
 
@@ -103,31 +103,12 @@ def run_lynis_in_env():
         scp = SCPClient(ssh.get_transport())
         scp.put('lynis/', 'lynis/', recursive=True)
         scp.put(lynis_run_file, lynis_run_file)
-        ssh.exec_command('./lynis.sh audit system -Q')
+        stdin, stdout, stderr = ssh.exec_command('./lynis.sh audit system -q')
+        # wait for command to execute before closing channel
+        while not stdout.channel.exit_status_ready():
+            print 'Running lynis on %s... \n', node
+
         ssh.close()
-
-        '''if node.contains('container'):
-            call(['lxc-attach', '-n', node, '--', './lynis.sh', 'audit', 'system', '-Q'])
-        else:
-            ssh.exec_command('./lynis.sh audit system -Q')
-
-    with open(container_list_file) as cl:
-        for hostname in cl:
-            hostname = hostname.rstrip()
-            ssh = get_ssh_client(hostname)
-            scp = SCPClient(ssh.get_transport())
-            # print line
-            # call(['scp', '-oStrictHostKeyChecking=no', '-r', 'lynis/', 'root@'+hostname+":"])
-            # call(['scp', lynis_run_file, 'root@'+hostname+":"])
-            scp.put('lynis/', 'lynis/', recursive=True)
-            scp.put(lynis_run_file, lynis_run_file)
-
-            if hostname.contains('container'):  # this is a container
-                call(['lxc-attach', '-n', hostname, '--', './lynis.sh', 'audit', 'system', '-Q'])
-            else:       # this is not a container
-                ssh.exec_command('./lynis.sh audit system -Q')
-            ssh.close()
-        cl.close()'''
 
 
 def run_lynis():
