@@ -1,5 +1,6 @@
 import os
 import subprocess
+import time
 from subprocess import call
 from paramiko import SSHClient
 from paramiko import AutoAddPolicy
@@ -106,7 +107,8 @@ def run_lynis_in_env():
         stdin, stdout, stderr = ssh.exec_command('./lynis.sh audit system -q')
         # wait for command to execute before closing channel
         while not stdout.channel.exit_status_ready():
-            print 'Running lynis on %s... \n', node
+            print u'Running lynis on {0:s}... \n'.format(node)
+            time.sleep(20)
 
         ssh.close()
 
