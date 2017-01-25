@@ -2,6 +2,7 @@ import os
 import subprocess
 from subprocess import call
 from paramiko import SSHClient
+from paramiko import AutoAddPolicy
 from threading import Timer
 
 try:
@@ -60,9 +61,17 @@ def load_config():
 def get_ssh_client(remote_server):
     client = SSHClient()
     client.load_system_host_keys()
+    client.set_missing_host_key_policy(AutoAddPolicy())
     client.connect(remote_server)
 
     return client
+
+
+def get_hostnames_list():
+    global hostnames_list
+
+    for key in hostnames_dict:
+        hostnames_list.append(key)
 
 
 def run_lynis_deployment_host(repo):
@@ -126,13 +135,6 @@ def run_lynis():
     # remember to remove lynis after use
 
     run_lynis_in_env()
-
-
-def get_hostnames_list():
-    global hostnames_list
-
-    for key in hostnames_dict:
-        hostnames_list.append(key)
 
 
 def run_john():
