@@ -11,6 +11,11 @@ try:
 except ImportError:
     call(['pip', 'install', 'pyyaml'])
     import yaml
+try:
+    import sh
+except ImportError:
+    call(['pip', 'install', 'sh'])
+    import sh
 from scp import SCPClient
 
 counter = 0
@@ -21,12 +26,16 @@ passwd_file = None
 container_list_file = None
 hostnames_dict = None
 hostnames_list = []
+lynis_log_folder = ''
+local_lynis_report = ''
+report_file_name = ''
 
 
 
 def load_config():
     global lynis_repo, lynis_run_file, shadow_file, passwd_file, \
-        container_list_file, hostnames_dict
+        container_list_file, hostnames_dict, local_lynis_report, lynis_log_folder, \
+        report_file_name
 
     with open('config.yml', 'r') as file_:
         cfg = yaml.safe_load(file_)
@@ -36,6 +45,9 @@ def load_config():
         lynis_info = cfg.get('lynis')
         lynis_repo = lynis_info['repo']
         lynis_run_file = lynis_info['lynis_file']
+        local_lynis_report = lynis_info['local_report']
+        lynis_log_folder = lynis_info['report_path']
+        report_file_name = lynis_info['report_file_name']
     except yaml.YAMLError:
         print 'Could not load Lynis info - check YAML file'
         exit()
@@ -74,11 +86,29 @@ def get_hostnames_list():
         hostnames_list.append(key)
 
 
+def get_lynis_report(node):
+    global report_file_name
+
+    report_file = open(report_file_name, 'w+')
+    report_file.close()
+
+    report_file = sh.grep(sh.cat(report_file_name), 'warning')
+
+    statinfo = os.stat(report_file)
+    if statinfo.st_size > 0:
+        os.rename(report_file_name, os.path.join(lynis_log_folder, report_file_name + '_' + node))
+    else:
+        os.remove(report_file_name)
+
+
+
 def run_lynis_deployment_host(repo):
     call(['git', 'clone', repo])
     os.chdir('lynis')
     call(['./lynis', 'audit', 'system', '-q'])  # logs in /var/log/lynis.log and lynis-report.dat
     os.chdir('../')
+
+    get_lynis_report("deployment_host")
 
 
 def run_lynis_in_env():
@@ -105,12 +135,15 @@ def run_lynis_in_env():
         scp.put('lynis/', 'lynis/', recursive=True)
         scp.put(lynis_run_file, lynis_run_file)
         stdin, stdout, stderr = ssh.exec_command('./lynis.sh audit system -q')
-        # wait for command to execute before closing channel
+        # wait for command to finish running before closing channel
         while not stdout.channel.exit_status_ready():
             print u'Running lynis on {0:s}... \n'.format(node)
             time.sleep(20)
 
         ssh.close()
+
+        # now log warnings for review
+        get_lynis_report(node)
 
 
 def run_lynis():
@@ -177,6 +210,8 @@ def kill_john_process(process):
 def main():
     load_config()
     get_hostnames_list()
+    # prepare log folder for lynis report
+    os.makedirs(lynis_log_folder)
     run_lynis()
     # run_john()
 

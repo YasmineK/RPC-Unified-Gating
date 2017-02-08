@@ -2,8 +2,11 @@
 
 # hardening_checks.py
 lynis:
-   repo:       https://github.com/CISOfy/lynis
-   lynis_file: lynis.sh
+   repo:               https://github.com/CISOfy/lynis
+   lynis_file:         lynis.sh
+   local_report:       /var/log/lynis/lynis-report.dat
+   report_path:        /opt/jenkins-slave/workspace/lynis_reports/
+   report_file_name:   lynis_result.txt
 john:
    shadow: /etc/shadow
    passwd: /etc/passwd
