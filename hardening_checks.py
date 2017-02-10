@@ -94,7 +94,7 @@ def get_lynis_report(node):
 
     report_file = sh.grep(sh.cat(report_file_name), 'warning')
 
-    statinfo = os.stat(report_file)
+    statinfo = os.stat(report_file_name)
     if statinfo.st_size > 0:
         os.rename(report_file_name, os.path.join(lynis_log_folder, report_file_name + '_' + node))
     else:
