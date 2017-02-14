@@ -92,7 +92,7 @@ def get_lynis_report(node):
     report_file = open(report_file_name, 'w+')
     report_file.close()
 
-    report_file = sh.grep(sh.cat(report_file_name), 'warning')
+    report_file = sh.grep(sh.cat(local_lynis_report), 'warning')
 
     statinfo = os.stat(report_file_name)
     if statinfo.st_size > 0:
