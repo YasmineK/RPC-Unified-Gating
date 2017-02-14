@@ -6,7 +6,7 @@ lynis:
    lynis_file:         lynis.sh
    local_report:       /var/log/lynis-report.dat
    report_path:        /opt/jenkins-slave/workspace/lynis_reports/
-   report_file_name:   lynis_result.txt
+   report_file_name:   lynis_result
 john:
    shadow: /etc/shadow
    passwd: /etc/passwd
