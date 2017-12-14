@@ -1,12 +1,29 @@
 import os
-import sys
-import getopt
+import argparse
 import errno
-from subprocess import call
 import xml.etree.ElementTree as ET
 
-import loadConfParams
+from subprocess import call
+from paramiko import SSHClient
+from paramiko import AutoAddPolicy
+from scp import SCPClient
 
+import loadConfParams as lcp
+
+
+''' Downloads the inventory file from the deployment host '''
+
+
+def download_inventory_list(deployment_host, path_to_inventory, uname):
+    with SSHClient() as ssh_client:
+        ssh_client.load_system_host_keys()
+        ssh_client.set_missing_host_key_policy(AutoAddPolicy())
+        ssh_client.connect(deployment_host, username=uname)
+        scp = SCPClient(ssh_client.get_transport())
+        scp.get(path_to_inventory)
+
+
+''' Runs Nmap '''
 
 
 def run_scan(infile, xml_out_file):
@@ -14,74 +31,59 @@ def run_scan(infile, xml_out_file):
         call(['nmap', '-iL', infile, '-p1-65535', 'P0', '-sV', '--version-all', '-oX', xml_out_file])
     except OSError(errno.ENOENT):     # No such file or directory error
         call(['apt-get', 'install', '-y', 'nmap'])
+        run_scan(infile, xml_out_file)
+
+
+''' Parses Nmap XML results and logs open services '''
 
 
 def parse_scan_results(infile, logfile):
     tree = ET.parse(infile)
     root = tree.getroot()
 
-    # first ensure log file is not yet created
-    if os.path.exists(logfile) is True:
+    # first ensure existing log file is removed
+    if os.path.exists(logfile):
         os.remove(logfile)
 
-    log = open(logfile, 'a')
+    with open(logfile, 'a') as log:
+        for host in root.iter('host'):
+            ip = host.find('address').get('addr')
+            for port in host.find('ports').findall('port'):
+                if port.find('state').get('state') == 'open':
+                    print 'found open ports'
+                    service = port.find('service')
+                    if service is not None:
+                        service_name = service.get('name')
+                        service_version = service.get('version')
+                        if service_name is not None and service_version is not None:
+                            output = "{ip} : \t {portID} : \t {sevice_name} - \t {service_version}".format(
+                                ip=ip, portID=port.get('portid'), service_name=service_name,
+                                service_version=service_version)
+                            print output
+                            log.write(output + '\n')
+                        elif service_name is not None:
+                            output = "{ip} : \t {portID} : \t {service_name}".format(
+                                ip=ip, portID=port.get('portid'), service_name=service_name)
+                            print output
+                            log.write(output + '\n')
+                    else:
+                        output = "{ip} : \t {portID}".format(ip=ip,  portID=port.get('portid'))
+                        print output
+                        log.write(output + '\n')
 
 
-    for host in root.iter('host'):
-        ip = host.find('address').get('addr')
-        # print 'the host is ' + ip
-        for port in host.find('ports').findall('port'):
-            if port.find('state').get('state') == 'open':
-                print 'found open ports'
-                service = port.find('service')
-                if service is not None:
-                    service_name = service.get('name')
-                    service_version = service.get('version')
-                    if service_name is not None and service_version is not None:
-                        print ip + ':' + port.get('portid') + ':' + service_name + ' - ' + service_version
-                        log.write(ip + ':' + port.get('portid') + ':' + service_name + ' - ' + service_version + '\n')
-                    elif service_name is not None:
-                        print ip + ':' + port.get('portid') + ':' + service_name
-                        log.write(ip + ':' + port.get('portid') + ':' + service_name + '\n')
-                else:
-                    print ip + ':' + port.get('portid')
-                    log.write(ip + ':' + port.get('portid') + '\n')
+def main():
 
-    log.close()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('deploy_host_ip', help='The IP of the deployment host')
+    args = parser.parse_args()
 
+    config_params = lcp.LoadConfParams()
+    # download the inventory list locally
+    download_inventory_list(args.deploy_host_ip, config_params.hostnames_path, 'root')
 
-def usage():
-    print "Usage: portscan.py -i <inputFile> -o <outputFile>"
-
-
-def main(argv):
-    ip_file = ''
-    result_file = ''
-
-    try:
-        opts, args = getopt.getopt(argv, 'hi:o:', [])
-    except getopt.GetoptError as err:
-        print str(err)
-        sys.exit(2)
-
-    if len(opts) == 0:
-        print 'You must pass an input file containing ip addresses.'
-        usage()
-
-    for option, arg in opts:
-        if option == '-h':
-            usage()
-        elif option == '-i':
-            ip_file = arg
-        elif option == '-o':
-            result_file = arg
-
-    #if ip_file != '':
-        #print 'Infile is ' + ip_file + '\n'
-
-    config_params = loadConfParams.LoadConfParams()
-    run_scan(ip_file, config_params.get_scan_xml_results())
-    parse_scan_results(config_params.get_scan_xml_results(), result_file)
+    run_scan(config_params.get_local_ip_list(), config_params.scan_xml_results)
+    parse_scan_results(config_params.scan_xml_results, config_params.scan_final_results)
 
 
 if __name__ == "__main__":
