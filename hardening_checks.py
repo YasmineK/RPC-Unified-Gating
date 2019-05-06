@@ -154,7 +154,7 @@ def run_lynis():
     run_lynis_in_env()
 
 
-def run_john():
+def run_john():        # ignored for now
 
     # this first part runs John on main host
     exec_call(None, passwd_file, shadow_file)

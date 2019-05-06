@@ -12,3 +12,6 @@ john:
    passwd: /etc/passwd
 hostnames:
    hostnames_path: /etc/openstack_deploy/openstack_hostnames_ips.yml
+portscan:
+   xmlresult_file:     xml_results.xml
+   finalresult_file:   nmap_final_results
